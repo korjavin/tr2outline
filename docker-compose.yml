@@ -5,26 +5,37 @@ services:
     image: ghcr.io/korjavin/tr2outline:latest
     container_name: tr2outline
     restart: unless-stopped
-    ports:
-      - "${PORT:-3000}:3000"
     environment:
       - PORT=3000
       - ANARLOG_WEBHOOK_SECRET=${ANARLOG_WEBHOOK_SECRET}
       - OUTLINE_URL=${OUTLINE_URL}
       - OUTLINE_API_KEY=${OUTLINE_API_KEY}
       - OUTLINE_COLLECTION_ID=${OUTLINE_COLLECTION_ID}
-    # If deploying with Traefik reverse proxy, uncomment below:
-    # networks:
-    #   - default
-    #   - ${TRAEFIK_NETWORK_NAME:-traefik}
-    # labels:
-    #   - "traefik.enable=true"
-    #   - "traefik.http.routers.tr2outline.rule=Host(`${DOMAIN}`)"
-    #   - "traefik.http.routers.tr2outline.entrypoints=websecure"
-    #   - "traefik.http.routers.tr2outline.tls.certresolver=letsencrypt"
-    #   - "traefik.http.services.tr2outline.loadbalancer.server.port=3000"
+    networks:
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=${TRAEFIK_NETWORK:-medtracker_proxy}"
 
-# networks:
-#   traefik:
-#     external: true
-#     name: ${TRAEFIK_NETWORK_NAME:-traefik}
+      # HTTPS router
+      - "traefik.http.routers.tr2outline.rule=Host(`${DOMAIN:-tr2o.kfamcloud.com}`)"
+      - "traefik.http.routers.tr2outline.entrypoints=websecure"
+      - "traefik.http.routers.tr2outline.tls=true"
+      - "traefik.http.routers.tr2outline.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}"
+
+      # HTTP -> HTTPS redirect router
+      - "traefik.http.routers.tr2outline-http.rule=Host(`${DOMAIN:-tr2o.kfamcloud.com}`)"
+      - "traefik.http.routers.tr2outline-http.entrypoints=web"
+      - "traefik.http.routers.tr2outline-http.middlewares=tr2outline-https"
+      - "traefik.http.middlewares.tr2outline-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.tr2outline-https.redirectscheme.permanent=true"
+
+      # Service loadbalancer configuration
+      - "traefik.http.services.tr2outline.loadbalancer.server.port=3000"
+      - "traefik.http.services.tr2outline.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.tr2outline.loadbalancer.healthcheck.interval=30s"
+
+networks:
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK:-medtracker_proxy}
