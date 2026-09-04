@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -54,10 +55,14 @@ func (s *WebhookServer) HandleAnarlogWebhook(w http.ResponseWriter, r *http.Requ
 	}
 
 	// 2. Parse payload JSON
-	var payload AnarlogWebhookPayload
-	if err := json.Unmarshal(rawBody, &payload); err != nil {
-		log.Printf("Bad Request: failed to parse JSON payload: %v", err)
-		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+	payload, err := ParseAnarlogPayload(rawBody, r.Header.Get("x-anarlog-timestamp"))
+	if err != nil {
+		bodySnippet := string(rawBody)
+		if len(bodySnippet) > 1000 {
+			bodySnippet = bodySnippet[:1000] + "... (truncated)"
+		}
+		log.Printf("Bad Request: failed to parse JSON payload: %v | Body: %s", err, bodySnippet)
+		http.Error(w, fmt.Sprintf("Invalid JSON payload: %v", err), http.StatusBadRequest)
 		return
 	}
 
@@ -82,7 +87,7 @@ func (s *WebhookServer) HandleAnarlogWebhook(w http.ResponseWriter, r *http.Requ
 
 	// 4. Format Markdown and Title
 	title := FormatDocumentTitle(payload.Data.Meeting.Title, payload.CreatedAt)
-	markdownText := FormatMeetingMarkdown(&payload)
+	markdownText := FormatMeetingMarkdown(payload)
 
 	log.Printf("Processing meeting note: %q (event ID: %s, meeting ID: %s)", title, payload.ID, payload.Data.Meeting.ID)
 
