@@ -27,11 +27,25 @@ func VerifySignature(payload []byte, signatureHeader, secret string) bool {
 	mac.Write(payload)
 	expectedSignature := hex.EncodeToString(mac.Sum(nil))
 
-	// Constant-time comparison
+// Constant-time comparison
 	return subtle.ConstantTimeCompare(
 		[]byte(strings.ToLower(actualSignature)),
 		[]byte(strings.ToLower(expectedSignature)),
 	) == 1
+}
+
+// VerifyAnySignature validates that the provided raw payload matches the signature
+// header computed using any of the provided secrets.
+func VerifyAnySignature(payload []byte, signatureHeader string, secrets []string) bool {
+	if len(secrets) == 0 || signatureHeader == "" {
+		return false
+	}
+	for _, secret := range secrets {
+		if VerifySignature(payload, signatureHeader, secret) {
+			return true
+		}
+	}
+	return false
 }
 
 // ComputeSignature calculates the HMAC-SHA256 signature formatted as sha256=<hex_hash>.

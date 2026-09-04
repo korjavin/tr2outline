@@ -43,6 +43,7 @@ func main() {
 	go func() {
 		log.Printf("Server listening on %s", addr)
 		log.Printf("Webhook endpoint: POST http://localhost:%d/api/webhooks/anarlog", cfg.Port)
+		log.Printf("Configured %d Anarlog webhook secret(s)", len(cfg.AnarlogWebhookSecrets))
 		log.Printf("Target Outline URL: %s, Collection ID: %s", cfg.OutlineURL, cfg.OutlineCollectionID)
 
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

@@ -47,7 +47,7 @@ func (s *WebhookServer) HandleAnarlogWebhook(w http.ResponseWriter, r *http.Requ
 
 	// 1. Verify HMAC-SHA256 signature
 	signatureHeader := r.Header.Get("x-anarlog-signature")
-	if !VerifySignature(rawBody, signatureHeader, s.cfg.AnarlogWebhookSecret) {
+	if !VerifyAnySignature(rawBody, signatureHeader, s.cfg.AnarlogWebhookSecrets) {
 		log.Printf("Unauthorized: signature verification failed for remote IP %s", r.RemoteAddr)
 		http.Error(w, "Invalid webhook signature", http.StatusUnauthorized)
 		return

@@ -82,3 +82,36 @@ func TestSignatureVerification(t *testing.T) {
 		})
 	}
 }
+
+func TestVerifyAnySignature(t *testing.T) {
+	payload := []byte(`{"test":"multiple_secrets"}`)
+	secret1 := "device-phone-secret"
+	secret2 := "device-laptop-secret"
+	secret3 := "device-tablet-secret"
+	secrets := []string{secret1, secret2, secret3}
+
+	sig1 := ComputeSignature(payload, secret1)
+	sig2 := ComputeSignature(payload, secret2)
+	sig3 := ComputeSignature(payload, secret3)
+	sigUnknown := ComputeSignature(payload, "unregistered-secret")
+
+	if !VerifyAnySignature(payload, sig1, secrets) {
+		t.Errorf("expected signature from secret1 to match")
+	}
+	if !VerifyAnySignature(payload, sig2, secrets) {
+		t.Errorf("expected signature from secret2 to match")
+	}
+	if !VerifyAnySignature(payload, sig3, secrets) {
+		t.Errorf("expected signature from secret3 to match")
+	}
+	if VerifyAnySignature(payload, sigUnknown, secrets) {
+		t.Errorf("expected signature from unknown secret to fail")
+	}
+	if VerifyAnySignature(payload, sig1, nil) {
+		t.Errorf("expected nil secrets to fail")
+	}
+	if VerifyAnySignature(payload, "", secrets) {
+		t.Errorf("expected empty signature to fail")
+	}
+}
+

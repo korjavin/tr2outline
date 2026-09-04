@@ -6,7 +6,7 @@ Lightweight middleware webhook receiver written in Go that catches webhooks from
 
 ## 🚀 Features
 
-- **HMAC-SHA256 Signature Verification**: Validates `x-anarlog-signature` against the raw HTTP request body with constant-time comparison.
+- **HMAC-SHA256 Signature Verification**: Validates `x-anarlog-signature` against the raw HTTP request body with constant-time comparison. Supports multiple secrets (comma-separated) to allow multiple Anarlog devices/clients.
 - **Event Filtering**: Only processes `note.enhanced` events (where AI summaries and action items are available); acknowledges other events (e.g., `webhook.test`) with `200 OK` without spamming Outline.
 - **Structured Markdown Generation**:
   - Title: `Meeting: <Title> (<YYYY-MM-DD>)`
@@ -27,7 +27,7 @@ Create a `.env` file (see `.env.example`):
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `PORT` | No | `3000` | HTTP port the server listens on |
-| `ANARLOG_WEBHOOK_SECRET` | **Yes** | - | Webhook secret configured in Anarlog for HMAC-SHA256 signing |
+| `ANARLOG_WEBHOOK_SECRET` | **Yes** | - | Webhook secret(s) for HMAC-SHA256 signing. Can be a single secret or comma-separated list (`secret1,secret2`) for multiple devices |
 | `OUTLINE_URL` | **Yes** | - | Base URL of your Outline instance (e.g. `https://app.getoutline.com` or self-hosted) |
 | `OUTLINE_API_KEY` | **Yes** | - | Outline API Token (Settings -> API Tokens) |
 | `OUTLINE_COLLECTION_ID` | **Yes** | - | UUID of the Outline collection where documents should be created |

@@ -12,11 +12,11 @@ import (
 
 // Config holds the application configuration loaded from environment variables.
 type Config struct {
-	Port                 int
-	AnarlogWebhookSecret string
-	OutlineURL           string
-	OutlineAPIKey        string
-	OutlineCollectionID  string
+	Port                  int
+	AnarlogWebhookSecrets []string
+	OutlineURL            string
+	OutlineAPIKey         string
+	OutlineCollectionID   string
 }
 
 // LoadConfig loads configuration from the environment and optional .env file.
@@ -35,16 +35,25 @@ func LoadConfig() (*Config, error) {
 		}
 	}
 
+	rawSecrets := os.Getenv("ANARLOG_WEBHOOK_SECRET")
+	var secrets []string
+	for _, s := range strings.Split(rawSecrets, ",") {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			secrets = append(secrets, s)
+		}
+	}
+
 	cfg := &Config{
-		Port:                 port,
-		AnarlogWebhookSecret: os.Getenv("ANARLOG_WEBHOOK_SECRET"),
-		OutlineURL:           strings.TrimRight(os.Getenv("OUTLINE_URL"), "/"),
-		OutlineAPIKey:        os.Getenv("OUTLINE_API_KEY"),
-		OutlineCollectionID:  os.Getenv("OUTLINE_COLLECTION_ID"),
+		Port:                  port,
+		AnarlogWebhookSecrets: secrets,
+		OutlineURL:            strings.TrimRight(os.Getenv("OUTLINE_URL"), "/"),
+		OutlineAPIKey:         os.Getenv("OUTLINE_API_KEY"),
+		OutlineCollectionID:   os.Getenv("OUTLINE_COLLECTION_ID"),
 	}
 
 	var missing []string
-	if cfg.AnarlogWebhookSecret == "" {
+	if len(cfg.AnarlogWebhookSecrets) == 0 {
 		missing = append(missing, "ANARLOG_WEBHOOK_SECRET")
 	}
 	if cfg.OutlineURL == "" {

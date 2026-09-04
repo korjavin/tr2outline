@@ -30,7 +30,7 @@ func TestHandlerHealth(t *testing.T) {
 
 func TestHandler_InvalidSignature(t *testing.T) {
 	cfg := &Config{
-		AnarlogWebhookSecret: "test-secret",
+		AnarlogWebhookSecrets: []string{"test-secret"},
 	}
 	server := NewWebhookServer(cfg, nil)
 	mux := http.NewServeMux()
@@ -50,14 +50,14 @@ func TestHandler_InvalidSignature(t *testing.T) {
 
 func TestHandler_NonTargetEvent(t *testing.T) {
 	cfg := &Config{
-		AnarlogWebhookSecret: "test-secret",
+		AnarlogWebhookSecrets: []string{"test-secret"},
 	}
 	server := NewWebhookServer(cfg, nil)
 	mux := http.NewServeMux()
 	server.RegisterRoutes(mux)
 
 	payload := []byte(`{"event":"webhook.test","data":{}}`)
-	sig := ComputeSignature(payload, cfg.AnarlogWebhookSecret)
+	sig := ComputeSignature(payload, "test-secret")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/webhooks/anarlog", bytes.NewReader(payload))
 	req.Header.Set("x-anarlog-signature", sig)
@@ -109,10 +109,10 @@ func TestHandler_Success(t *testing.T) {
 	defer mockOutline.Close()
 
 	cfg := &Config{
-		AnarlogWebhookSecret: "test-secret",
-		OutlineURL:           mockOutline.URL,
-		OutlineAPIKey:        "outline-token-xyz",
-		OutlineCollectionID:  "col_target_abc",
+		AnarlogWebhookSecrets: []string{"device1-secret", "device2-secret"},
+		OutlineURL:            mockOutline.URL,
+		OutlineAPIKey:         "outline-token-xyz",
+		OutlineCollectionID:   "col_target_abc",
 	}
 	outlineClient := NewOutlineClient(cfg.OutlineURL, cfg.OutlineAPIKey, cfg.OutlineCollectionID)
 	server := NewWebhookServer(cfg, outlineClient)
@@ -137,7 +137,8 @@ func TestHandler_Success(t *testing.T) {
 		}
 	}`
 
-	sig := ComputeSignature([]byte(rawJSON), cfg.AnarlogWebhookSecret)
+	// Sign using the SECOND device's secret
+	sig := ComputeSignature([]byte(rawJSON), "device2-secret")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/webhooks/anarlog", strings.NewReader(rawJSON))
 	req.Header.Set("x-anarlog-signature", sig)
@@ -185,10 +186,10 @@ func TestHandler_OutlineError(t *testing.T) {
 	defer mockOutline.Close()
 
 	cfg := &Config{
-		AnarlogWebhookSecret: "test-secret",
-		OutlineURL:           mockOutline.URL,
-		OutlineAPIKey:        "outline-token-xyz",
-		OutlineCollectionID:  "col_target_abc",
+		AnarlogWebhookSecrets: []string{"test-secret"},
+		OutlineURL:            mockOutline.URL,
+		OutlineAPIKey:         "outline-token-xyz",
+		OutlineCollectionID:   "col_target_abc",
 	}
 	outlineClient := NewOutlineClient(cfg.OutlineURL, cfg.OutlineAPIKey, cfg.OutlineCollectionID)
 	server := NewWebhookServer(cfg, outlineClient)
@@ -197,7 +198,7 @@ func TestHandler_OutlineError(t *testing.T) {
 	server.RegisterRoutes(mux)
 
 	rawJSON := `{"event":"note.enhanced","data":{"meeting":{"title":"Test"}}}`
-	sig := ComputeSignature([]byte(rawJSON), cfg.AnarlogWebhookSecret)
+	sig := ComputeSignature([]byte(rawJSON), "test-secret")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/webhooks/anarlog", strings.NewReader(rawJSON))
 	req.Header.Set("x-anarlog-signature", sig)
