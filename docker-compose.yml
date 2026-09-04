@@ -15,7 +15,7 @@ services:
       - traefik
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=${TRAEFIK_NETWORK:-medtracker_proxy}"
+      - "traefik.docker.network=${TRAEFIK_NETWORK_NAME:-${TRAEFIK_NETWORK:-vaultwarden_default}}"
 
       # HTTPS router
       - "traefik.http.routers.tr2outline.rule=Host(`${DOMAIN:-tr2o.kfamcloud.com}`)"
@@ -38,4 +38,4 @@ services:
 networks:
   traefik:
     external: true
-    name: ${TRAEFIK_NETWORK:-medtracker_proxy}
+    name: ${TRAEFIK_NETWORK_NAME:-${TRAEFIK_NETWORK:-vaultwarden_default}}
