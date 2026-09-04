@@ -17,11 +17,10 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=${TRAEFIK_NETWORK_NAME:-traefik}"
 
-      # HTTPS router
+      # HTTPS router (certresolver inherited from Traefik entrypoint)
       - "traefik.http.routers.tr2outline.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.tr2outline.entrypoints=websecure"
       - "traefik.http.routers.tr2outline.tls=true"
-      - "traefik.http.routers.tr2outline.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}"
 
       # HTTP -> HTTPS redirect router
       - "traefik.http.routers.tr2outline-http.rule=Host(`${DOMAIN}`)"
