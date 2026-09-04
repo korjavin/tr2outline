@@ -9,15 +9,8 @@ import (
 )
 
 // ParseAnarlogPayload parses raw JSON body into AnarlogWebhookPayload in a resilient way,
-// handling type variations (numbers as strings, object arrays in action_items/summaries/participants, etc.).
+// handling type variations (note as object, numbers as strings, object arrays in action_items/summaries/participants, etc.).
 func ParseAnarlogPayload(raw []byte, fallbackTimestamp string) (*AnarlogWebhookPayload, error) {
-	// First try standard unmarshal
-	var standard AnarlogWebhookPayload
-	if err := json.Unmarshal(raw, &standard); err == nil && standard.Event != "" {
-		return &standard, nil
-	}
-
-	// Fallback to generic map parsing if strict unmarshal failed
 	var root map[string]interface{}
 	if err := json.Unmarshal(raw, &root); err != nil {
 		return nil, fmt.Errorf("invalid JSON syntax: %w", err)
@@ -67,10 +60,11 @@ func ParseAnarlogPayload(raw []byte, fallbackTimestamp string) (*AnarlogWebhookP
 	if title, ok := meetingMap["title"].(string); ok {
 		payload.Data.Meeting.Title = title
 	}
-	if note, ok := meetingMap["note"].(string); ok {
-		payload.Data.Meeting.Note = note
-	} else if notes, ok := meetingMap["notes"].(string); ok {
-		payload.Data.Meeting.Note = notes
+
+	// Note extraction (handles string, object, sections)
+	payload.Data.Meeting.Note = extractNoteString(meetingMap["note"])
+	if payload.Data.Meeting.Note == "" {
+		payload.Data.Meeting.Note = extractNoteString(meetingMap["notes"])
 	}
 
 	payload.Data.Meeting.Summaries = extractStringList(meetingMap["summaries"], "summary", "text", "content")
@@ -88,12 +82,44 @@ func ParseAnarlogPayload(raw []byte, fallbackTimestamp string) (*AnarlogWebhookP
 	return payload, nil
 }
 
+func extractNoteString(val interface{}) string {
+	if val == nil {
+		return ""
+	}
+	switch v := val.(type) {
+	case string:
+		return strings.TrimSpace(v)
+	case map[string]interface{}:
+		// 1. Common single string field names in note object
+		for _, key := range []string{"content", "text", "markdown", "body", "summary", "notes", "raw", "description"} {
+			if str, ok := v[key].(string); ok && strings.TrimSpace(str) != "" {
+				return strings.TrimSpace(str)
+			}
+		}
+		// 2. Structured sections (e.g. {"agenda": "...", "discussion": "..."})
+		var sb strings.Builder
+		for k, val := range v {
+			if str, ok := val.(string); ok && strings.TrimSpace(str) != "" {
+				sectionTitle := strings.Title(strings.ReplaceAll(k, "_", " "))
+				sb.WriteString(fmt.Sprintf("### %s\n%s\n\n", sectionTitle, strings.TrimSpace(str)))
+			}
+		}
+		if sb.Len() > 0 {
+			return strings.TrimSpace(sb.String())
+		}
+		// 3. Fallback: Pretty-printed JSON representation
+		if b, err := json.MarshalIndent(v, "", "  "); err == nil {
+			return string(b)
+		}
+	}
+	return fmt.Sprintf("%v", val)
+}
+
 func extractTimestampString(val interface{}, fallback string) string {
 	switch v := val.(type) {
 	case string:
 		return v
 	case float64:
-		// Could be seconds or milliseconds
 		sec := int64(v)
 		if sec > 1e11 { // milliseconds
 			return time.UnixMilli(sec).UTC().Format(time.RFC3339)
@@ -130,7 +156,6 @@ func extractStringList(val interface{}, preferredKeys ...string) []string {
 					result = append(result, s)
 				}
 			case map[string]interface{}:
-				// Look for preferred keys first
 				found := false
 				for _, key := range preferredKeys {
 					if text, ok := elem[key].(string); ok && strings.TrimSpace(text) != "" {

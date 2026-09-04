@@ -101,3 +101,35 @@ func TestParseAnarlogPayload_FlexibleTypes(t *testing.T) {
 		t.Errorf("expected transcript text to be populated from segments")
 	}
 }
+
+func TestParseAnarlogPayload_NoteAsObject(t *testing.T) {
+	// The exact issue reported: note is an object {"content": "...", "sections": ...}
+	raw := []byte(`{
+		"id": "evt_789",
+		"event": "note.enhanced",
+		"created_at": "2026-09-04T23:09:00Z",
+		"data": {
+			"meeting": {
+				"title": "Call with Client",
+				"note": {
+					"content": "Meeting went well. Agreement reached on deliverables.",
+					"summary": "Short summary"
+				},
+				"summaries": ["Good discussion"],
+				"participants": ["Ivan", "John"],
+				"action_items": ["Send invoice"]
+			},
+			"transcript_text": "Call audio transcript..."
+		}
+	}`)
+
+	payload, err := ParseAnarlogPayload(raw, "")
+	if err != nil {
+		t.Fatalf("unexpected error parsing payload with note as object: %v", err)
+	}
+
+	if payload.Data.Meeting.Note != "Meeting went well. Agreement reached on deliverables." {
+		t.Errorf("expected note content, got: %q", payload.Data.Meeting.Note)
+	}
+}
+
