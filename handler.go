@@ -58,11 +58,7 @@ func (s *WebhookServer) HandleAnarlogWebhook(w http.ResponseWriter, r *http.Requ
 	// 2. Parse payload JSON
 	payload, err := ParseAnarlogPayload(rawBody, r.Header.Get("x-anarlog-timestamp"))
 	if err != nil {
-		bodySnippet := string(rawBody)
-		if len(bodySnippet) > 1000 {
-			bodySnippet = bodySnippet[:1000] + "... (truncated)"
-		}
-		log.Printf("Bad Request: failed to parse JSON payload: %v | Body: %s", err, bodySnippet)
+		log.Printf("Bad Request: failed to parse JSON payload: %v", err)
 		http.Error(w, fmt.Sprintf("Invalid JSON payload: %v", err), http.StatusBadRequest)
 		return
 	}

@@ -61,13 +61,6 @@ func ParseAnarlogPayload(raw []byte, fallbackTimestamp string) (*AnarlogWebhookP
 	log.Printf("[Webhook Schema] root_keys=%v, data_keys=%v, meeting_keys=%v, note_keys=%v",
 		mapKeys(root), mapKeys(dataMap), mapKeys(meetingMap), mapKeys(noteMap))
 
-	// Truncated payload snippet in logs
-	rawSnippet := string(raw)
-	if len(rawSnippet) > 2000 {
-		rawSnippet = rawSnippet[:2000] + "... (truncated)"
-	}
-	log.Printf("[Webhook Payload] %s", rawSnippet)
-
 	if id, ok := meetingMap["id"].(string); ok {
 		payload.Data.Meeting.ID = id
 	}
