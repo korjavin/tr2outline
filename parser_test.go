@@ -133,3 +133,40 @@ func TestParseAnarlogPayload_NoteAsObject(t *testing.T) {
 	}
 }
 
+func TestParseAnarlogPayload_NestedNoteFields(t *testing.T) {
+	// Payload where title and summary are inside note or at data level instead of meeting directly
+	raw := []byte(`{
+		"id": "evt_nested",
+		"event": "note.enhanced",
+		"data": {
+			"meeting": {
+				"id": "meet_xyz",
+				"note": {
+					"title": "Nested Architecture Review",
+					"summary": "Reviewed microservices architecture and agreed on gRPC for internal comms.",
+					"action_items": ["Draft proto spec", "Benchmark latency"]
+				}
+			},
+			"transcript": "Meeting recording transcript text"
+		}
+	}`)
+
+	payload, err := ParseAnarlogPayload(raw, "")
+	if err != nil {
+		t.Fatalf("unexpected error parsing payload: %v", err)
+	}
+
+	if payload.Data.Meeting.Title != "Nested Architecture Review" {
+		t.Errorf("expected title 'Nested Architecture Review', got: %q", payload.Data.Meeting.Title)
+	}
+	if len(payload.Data.Meeting.Summaries) != 1 || payload.Data.Meeting.Summaries[0] != "Reviewed microservices architecture and agreed on gRPC for internal comms." {
+		t.Errorf("expected 1 summary item, got: %v", payload.Data.Meeting.Summaries)
+	}
+	if len(payload.Data.Meeting.ActionItems) != 2 {
+		t.Errorf("expected 2 action items, got: %v", payload.Data.Meeting.ActionItems)
+	}
+	if payload.Data.TranscriptText != "Meeting recording transcript text" {
+		t.Errorf("expected transcript text, got: %q", payload.Data.TranscriptText)
+	}
+}
+
