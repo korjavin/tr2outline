@@ -290,3 +290,72 @@ func TestHandler_UpdateExisting(t *testing.T) {
 		t.Errorf("expected action 'updated', got %v", resp["action"])
 	}
 }
+
+func TestHandler_MeetingCompleted_Empty(t *testing.T) {
+	cfg := &Config{AnarlogWebhookSecrets: []string{"test-secret"}}
+	server := NewWebhookServer(cfg, nil)
+	mux := http.NewServeMux()
+	server.RegisterRoutes(mux)
+
+	// meeting.completed right after recording: empty title, empty summaries, empty transcript
+	rawJSON := `{"event":"meeting.completed","data":{"meeting":{"id":"meet-empty","title":"","summaries":[]},"transcript_text":""}}`
+	sig := ComputeSignature([]byte(rawJSON), "test-secret")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/webhooks/anarlog", strings.NewReader(rawJSON))
+	req.Header.Set("x-anarlog-signature", sig)
+
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rr.Code)
+	}
+	var resp map[string]interface{}
+	_ = json.Unmarshal(rr.Body.Bytes(), &resp)
+	if resp["status"] != "ignored" {
+		t.Errorf("expected status 'ignored' for empty meeting.completed, got %v", resp["status"])
+	}
+}
+
+func TestHandler_MeetingCompleted_WithContent(t *testing.T) {
+	var createCalled bool
+	mockOutline := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		createCalled = true
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true,"data":{"id":"doc-completed-1","title":"Meeting: Edit Test (2026-09-06)","url":"/doc/1"}}`))
+	}))
+	defer mockOutline.Close()
+
+	cfg := &Config{
+		AnarlogWebhookSecrets: []string{"test-secret"},
+		OutlineURL:            mockOutline.URL,
+		OutlineAPIKey:         "outline-token-xyz",
+		OutlineCollectionID:   "col_target_abc",
+	}
+	outlineClient := NewOutlineClient(cfg.OutlineURL, cfg.OutlineAPIKey, cfg.OutlineCollectionID)
+	server := NewWebhookServer(cfg, outlineClient)
+	mux := http.NewServeMux()
+	server.RegisterRoutes(mux)
+
+	// meeting.completed sent after editing existing meeting: has title and summary
+	rawJSON := `{"event":"meeting.completed","data":{"meeting":{"id":"meet-edited","title":"Edit Test","summaries":[{"markdown":"Updated summary"}]},"transcript_text":"audio text"}}`
+	sig := ComputeSignature([]byte(rawJSON), "test-secret")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/webhooks/anarlog", strings.NewReader(rawJSON))
+	req.Header.Set("x-anarlog-signature", sig)
+
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rr.Code)
+	}
+	if !createCalled {
+		t.Errorf("expected outline client to be called for meeting.completed with content")
+	}
+	var resp map[string]interface{}
+	_ = json.Unmarshal(rr.Body.Bytes(), &resp)
+	if resp["status"] != "success" {
+		t.Errorf("expected status 'success', got %v", resp["status"])
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 )
 
 // WebhookServer handles incoming webhooks and manages Outline integration.
@@ -72,15 +73,38 @@ func (s *WebhookServer) HandleAnarlogWebhook(w http.ResponseWriter, r *http.Requ
 		eventType = payload.Event
 	}
 
-	// 3. Filter events: only process "note.enhanced"
-	if eventType != "note.enhanced" {
-		log.Printf("Info: received non-target event %q (id: %s). Skipping without Outline call.", eventType, payload.ID)
+	// 3. Filter events: process "note.enhanced", update events, and "meeting.completed" if it has content
+	shouldProcess := false
+	skipReason := ""
+
+	hasMeetingData := strings.TrimSpace(payload.Data.Meeting.Title) != "" ||
+		len(payload.Data.Meeting.Summaries) > 0 ||
+		strings.TrimSpace(payload.Data.TranscriptText) != ""
+
+	switch eventType {
+	case "note.enhanced", "meeting.updated", "note.updated", "note.created":
+		shouldProcess = true
+	case "meeting.completed":
+		// When a meeting first finishes recording, it has no title or summaries yet.
+		// Skip initial empty meeting.completed to wait for AI enhancement.
+		// If it already has title or summaries (e.g. edited existing meeting), process and update Outline.
+		if hasMeetingData && (payload.Data.Meeting.Title != "" || len(payload.Data.Meeting.Summaries) > 0) {
+			shouldProcess = true
+		} else {
+			skipReason = "meeting.completed has no title or summaries yet (waiting for AI enhancement)"
+		}
+	default:
+		skipReason = fmt.Sprintf("event %q is not a target meeting event", eventType)
+	}
+
+	if !shouldProcess {
+		log.Printf("Info: received non-target event %q (id: %s). Skipping without Outline call (%s).", eventType, payload.ID, skipReason)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":  "ignored",
 			"event":   eventType,
-			"message": "Event received but ignored (only 'note.enhanced' is processed)",
+			"message": fmt.Sprintf("Event received but ignored: %s", skipReason),
 		})
 		return
 	}
