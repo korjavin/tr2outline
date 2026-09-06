@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -167,6 +168,99 @@ func TestParseAnarlogPayload_NestedNoteFields(t *testing.T) {
 	}
 	if payload.Data.TranscriptText != "Meeting recording transcript text" {
 		t.Errorf("expected transcript text, got: %q", payload.Data.TranscriptText)
+	}
+}
+
+func TestParseAnarlogPayload_RealPayload(t *testing.T) {
+	raw := []byte(`{
+		"created_at": "2026-09-06T23:08:45.495Z",
+		"data": {
+			"meeting": {
+				"action_items": [],
+				"created_at": "2026-09-06T23:06:29.340Z",
+				"ended_at": "",
+				"id": "a0e4d2a9-727d-4534-8230-65fc1ce3c0de",
+				"kind": "meeting",
+				"language": "",
+				"note": {
+					"created_at": "2026-09-06T23:06:29.340Z",
+					"id": "a0e4d2a9-727d-4534-8230-65fc1ce3c0de",
+					"kind": "note",
+					"markdown": "memo 1\n\nmemo 2",
+					"sort_order": 0,
+					"template_id": "",
+					"title": "",
+					"updated_at": "2026-09-06T23:07:45.911Z"
+				},
+				"participants": [
+					{
+						"display_name": "",
+						"email": "",
+						"human_id": "bd9b07df-2b36-4488-ac6c-77e925770e1b",
+						"job_title": "",
+						"organization_id": "",
+						"organization_name": "",
+						"role": ""
+					}
+				],
+				"series_id": "",
+				"started_at": "",
+				"status": "active",
+				"summaries": [
+					{
+						"created_at": "2026-09-06T23:08:30.096Z",
+						"id": "b04ffafa-8e72-4eae-87e4-1f8bece1b31c",
+						"kind": "summary",
+						"markdown": "# Audio Echo Testing\n\n# Audio and Echo Testing\n\n- The speaker investigated an unexplained audio echo occurring during a Google Meet recording.\n- Testing the microphone's Voice Isolation mode showed improved audio results.\n- The microphone setting was returned to standard mode after testing concluded.",
+						"sort_order": 1,
+						"template_id": "",
+						"title": "Summary",
+						"updated_at": "2026-09-06T23:08:45.488Z"
+					}
+				],
+				"timezone": "",
+				"title": "Audio Echo Testing",
+				"updated_at": "2026-09-06T23:08:45.488Z"
+			},
+			"transcript_text": "Что ж, начинаем записывать."
+		},
+		"event": "note.enhanced",
+		"id": "evt_ba87a6bc11bf4606bd0607c55b2b208a"
+	}`)
+
+	payload, err := ParseAnarlogPayload(raw, "")
+	if err != nil {
+		t.Fatalf("unexpected error parsing real payload: %v", err)
+	}
+
+	if payload.Data.Meeting.Title != "Audio Echo Testing" {
+		t.Errorf("expected title 'Audio Echo Testing', got: %q", payload.Data.Meeting.Title)
+	}
+	if len(payload.Data.Meeting.Summaries) != 1 {
+		t.Fatalf("expected 1 summary, got: %d", len(payload.Data.Meeting.Summaries))
+	}
+	if !strings.Contains(payload.Data.Meeting.Summaries[0], "The speaker investigated") {
+		t.Errorf("expected summary markdown content, got: %q", payload.Data.Meeting.Summaries[0])
+	}
+	if len(payload.Data.Meeting.Participants) != 0 {
+		t.Errorf("expected 0 participants (empty display_name), got: %v", payload.Data.Meeting.Participants)
+	}
+	if payload.Data.Meeting.Note != "memo 1\n\nmemo 2" {
+		t.Errorf("expected note 'memo 1\\n\\nmemo 2', got: %q", payload.Data.Meeting.Note)
+	}
+
+	md := FormatMeetingMarkdown(payload)
+	if !strings.Contains(md, "The speaker investigated an unexplained audio echo") {
+		t.Errorf("expected markdown to contain summary content, got:\n%s", md)
+	}
+	if !strings.Contains(md, "memo 1\n\nmemo 2") {
+		t.Errorf("expected markdown to contain notes, got:\n%s", md)
+	}
+	if !strings.Contains(md, "**Participants:** _None_") {
+		t.Errorf("expected Participants: _None_, got:\n%s", md)
+	}
+	if !strings.Contains(md, "<!-- anarlog_meeting_id: a0e4d2a9-727d-4534-8230-65fc1ce3c0de -->") {
+		t.Errorf("expected markdown to contain meeting ID comment, got:\n%s", md)
 	}
 }
 

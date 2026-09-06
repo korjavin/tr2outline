@@ -96,7 +96,7 @@ func ParseAnarlogPayload(raw []byte, fallbackTimestamp string) (*AnarlogWebhookP
 		meetingMap["overview"], noteMap["overview"], dataMap["overview"],
 	}
 	for _, src := range summarySources {
-		if list := extractStringList(src, "summary", "text", "content", "point", "title"); len(list) > 0 {
+		if list := extractStringList(src, "markdown", "summary", "text", "content", "point"); len(list) > 0 {
 			payload.Data.Meeting.Summaries = list
 			break
 		}
@@ -113,7 +113,7 @@ func ParseAnarlogPayload(raw []byte, fallbackTimestamp string) (*AnarlogWebhookP
 		meetingMap["next_steps"], noteMap["next_steps"], dataMap["next_steps"],
 	}
 	for _, src := range actionSources {
-		if list := extractStringList(src, "task", "action", "text", "content", "title", "item", "description"); len(list) > 0 {
+		if list := extractStringList(src, "markdown", "task", "action", "text", "content", "item", "description", "title"); len(list) > 0 {
 			payload.Data.Meeting.ActionItems = list
 			break
 		}
@@ -127,7 +127,7 @@ func ParseAnarlogPayload(raw []byte, fallbackTimestamp string) (*AnarlogWebhookP
 		meetingMap["members"], dataMap["members"],
 	}
 	for _, src := range participantSources {
-		if list := extractStringList(src, "name", "displayName", "email", "user"); len(list) > 0 {
+		if list := extractParticipants(src); len(list) > 0 {
 			payload.Data.Meeting.Participants = list
 			break
 		}
@@ -279,7 +279,7 @@ func extractStringList(val interface{}, preferredKeys ...string) []string {
 						break
 					}
 				}
-				if !found {
+				if !found && len(preferredKeys) == 0 {
 					for _, val := range elem {
 						if text, ok := val.(string); ok && strings.TrimSpace(text) != "" {
 							result = append(result, strings.TrimSpace(text))
@@ -296,6 +296,41 @@ func extractStringList(val interface{}, preferredKeys ...string) []string {
 			line = strings.TrimPrefix(line, "* ")
 			if line != "" {
 				result = append(result, line)
+			}
+		}
+	}
+
+	return result
+}
+
+func extractParticipants(val interface{}) []string {
+	if val == nil {
+		return nil
+	}
+
+	var result []string
+
+	switch v := val.(type) {
+	case []interface{}:
+		for _, item := range v {
+			switch elem := item.(type) {
+			case string:
+				if s := strings.TrimSpace(elem); s != "" {
+					result = append(result, s)
+				}
+			case map[string]interface{}:
+				for _, key := range []string{"display_name", "displayName", "name", "full_name", "email", "username"} {
+					if text, ok := elem[key].(string); ok && strings.TrimSpace(text) != "" {
+						result = append(result, strings.TrimSpace(text))
+						break
+					}
+				}
+			}
+		}
+	case string:
+		for _, line := range strings.Split(v, ",") {
+			if s := strings.TrimSpace(line); s != "" {
+				result = append(result, s)
 			}
 		}
 	}

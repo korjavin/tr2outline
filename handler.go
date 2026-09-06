@@ -91,25 +91,30 @@ func (s *WebhookServer) HandleAnarlogWebhook(w http.ResponseWriter, r *http.Requ
 
 	log.Printf("Processing meeting note: %q (event ID: %s, meeting ID: %s)", title, payload.ID, payload.Data.Meeting.ID)
 
-	// 5. Send to Outline API
-	docResp, err := s.outlineClient.CreateDocument(r.Context(), title, markdownText)
+	// 5. Send to Outline API (update if document exists, otherwise create)
+	docResp, updated, err := s.outlineClient.CreateOrUpdateDocument(r.Context(), payload.Data.Meeting.ID, title, markdownText)
 	if err != nil {
-		log.Printf("Error: failed to create Outline document for event %s: %v", payload.ID, err)
+		log.Printf("Error: failed to save Outline document for event %s: %v", payload.ID, err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":  "error",
-			"message": "Failed to create document in Outline",
+			"message": "Failed to save document in Outline",
 		})
 		return
 	}
 
-	log.Printf("Successfully created Outline document %q (ID: %s, URL: %s)", docResp.Data.Title, docResp.Data.ID, docResp.Data.URL)
+	action := "created"
+	if updated {
+		action = "updated"
+	}
+	log.Printf("Successfully %s Outline document %q (ID: %s, URL: %s)", action, docResp.Data.Title, docResp.Data.ID, docResp.Data.URL)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":      "success",
+		"action":      action,
 		"document_id": docResp.Data.ID,
 		"title":       docResp.Data.Title,
 		"url":         docResp.Data.URL,

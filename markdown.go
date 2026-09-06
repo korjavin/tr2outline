@@ -39,26 +39,46 @@ func FormatMeetingMarkdown(payload *AnarlogWebhookPayload) string {
 	// Summaries
 	var summaryBlock strings.Builder
 	if len(meeting.Summaries) > 0 {
-		for i, s := range meeting.Summaries {
-			if i > 0 {
-				summaryBlock.WriteString("\n")
+		for _, s := range meeting.Summaries {
+			trimmed := strings.TrimSpace(s)
+			if trimmed == "" {
+				continue
 			}
-			summaryBlock.WriteString(fmt.Sprintf("- %s", strings.TrimSpace(s)))
+			if summaryBlock.Len() > 0 {
+				summaryBlock.WriteString("\n\n")
+			}
+			if strings.HasPrefix(trimmed, "#") || strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") || strings.Contains(trimmed, "\n") {
+				summaryBlock.WriteString(trimmed)
+			} else {
+				summaryBlock.WriteString(fmt.Sprintf("- %s", trimmed))
+			}
 		}
-	} else {
+	}
+	if summaryBlock.Len() == 0 {
 		summaryBlock.WriteString("_No summary provided._")
 	}
 
 	// Action Items
 	var actionItemsBlock strings.Builder
 	if len(meeting.ActionItems) > 0 {
-		for i, item := range meeting.ActionItems {
-			if i > 0 {
+		for _, item := range meeting.ActionItems {
+			trimmed := strings.TrimSpace(item)
+			if trimmed == "" {
+				continue
+			}
+			if actionItemsBlock.Len() > 0 {
 				actionItemsBlock.WriteString("\n")
 			}
-			actionItemsBlock.WriteString(fmt.Sprintf("- [ ] %s", strings.TrimSpace(item)))
+			if strings.HasPrefix(trimmed, "- [ ] ") || strings.HasPrefix(trimmed, "- [x] ") {
+				actionItemsBlock.WriteString(trimmed)
+			} else if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") {
+				actionItemsBlock.WriteString(fmt.Sprintf("- [ ] %s", strings.TrimSpace(trimmed[2:])))
+			} else {
+				actionItemsBlock.WriteString(fmt.Sprintf("- [ ] %s", trimmed))
+			}
 		}
-	} else {
+	}
+	if actionItemsBlock.Len() == 0 {
 		actionItemsBlock.WriteString("_No action items._")
 	}
 
@@ -77,6 +97,11 @@ func FormatMeetingMarkdown(payload *AnarlogWebhookPayload) string {
 	meetingTitle := strings.TrimSpace(meeting.Title)
 	if meetingTitle == "" {
 		meetingTitle = "Untitled"
+	}
+
+	meetingIDComment := ""
+	if meeting.ID != "" {
+		meetingIDComment = fmt.Sprintf("\n\n<!-- anarlog_meeting_id: %s -->", meeting.ID)
 	}
 
 	// Construct full Markdown according to the specified template
@@ -98,8 +123,8 @@ func FormatMeetingMarkdown(payload *AnarlogWebhookPayload) string {
 <summary><b>🎙️ Full Transcript</b></summary>
 
 %s
-</details>
-`, meetingTitle, formattedDate, participantsStr, summaryBlock.String(), actionItemsBlock.String(), notes, transcript)
+</details>%s
+`, meetingTitle, formattedDate, participantsStr, summaryBlock.String(), actionItemsBlock.String(), notes, transcript, meetingIDComment)
 }
 
 func parseTime(raw string) (time.Time, error) {
