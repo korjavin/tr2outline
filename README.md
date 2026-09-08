@@ -9,7 +9,7 @@ Lightweight middleware webhook receiver written in Go that catches webhooks from
 - **HMAC-SHA256 Signature Verification**: Validates `x-anarlog-signature` against the raw HTTP request body with constant-time comparison. Supports multiple secrets (comma-separated) to allow multiple Anarlog devices/clients.
 - **Event Filtering**: Only processes `note.enhanced` events (where AI summaries and action items are available); acknowledges other events (e.g., `webhook.test`) with `200 OK` without spamming Outline.
 - **Structured Markdown Generation**:
-  - Title: `Meeting: <Title> (<YYYY-MM-DD>)`
+  - Title: `<YYYY-MM-DD> <Title>` (e.g., `2026-09-08 German Language Practice`)
   - Meeting metadata: date and comma-separated participants.
   - Bullet-point summaries (`## 📝 Summary`).
   - Markdown checklists (`- [ ]`) for action items (`## ✅ Action Items`).

@@ -159,8 +159,8 @@ func TestHandler_Success(t *testing.T) {
 	if capturedOutlineReq.CollectionID != "col_target_abc" {
 		t.Errorf("expected collection col_target_abc, got %q", capturedOutlineReq.CollectionID)
 	}
-	if capturedOutlineReq.Title != "Meeting: Weekly Sync (2026-07-28)" {
-		t.Errorf("expected title 'Meeting: Weekly Sync (2026-07-28)', got %q", capturedOutlineReq.Title)
+	if capturedOutlineReq.Title != "2026-07-28 Weekly Sync" {
+		t.Errorf("expected title '2026-07-28 Weekly Sync', got %q", capturedOutlineReq.Title)
 	}
 	if !capturedOutlineReq.Publish {
 		t.Errorf("expected publish to be true")
@@ -225,7 +225,7 @@ func TestHandler_UpdateExisting(t *testing.T) {
 					{
 						"document": {
 							"id": "existing-doc-999",
-							"title": "Meeting: Update Test (2026-09-06)",
+							"title": "2026-09-06 Update Test",
 							"collectionId": "col_target_abc"
 						}
 					}

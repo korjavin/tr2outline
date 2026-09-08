@@ -7,7 +7,7 @@ import (
 )
 
 // FormatDocumentTitle formats the Outline document title.
-// Format: "Meeting: {meeting.title} ({YYYY-MM-DD})"
+// Format: "{YYYY-MM-DD} {meeting.title}" (e.g. "2026-09-08 German Language Practice")
 func FormatDocumentTitle(meetingTitle, createdAt string) string {
 	datePart := formatDateForTitle(createdAt)
 
@@ -17,9 +17,9 @@ func FormatDocumentTitle(meetingTitle, createdAt string) string {
 	}
 
 	if datePart != "" {
-		return fmt.Sprintf("Meeting: %s (%s)", title, datePart)
+		return fmt.Sprintf("%s %s", datePart, title)
 	}
-	return fmt.Sprintf("Meeting: %s", title)
+	return title
 }
 
 // FormatMeetingMarkdown generates the Markdown content for Outline.
@@ -94,10 +94,7 @@ func FormatMeetingMarkdown(payload *AnarlogWebhookPayload) string {
 		transcript = "_No transcript available._"
 	}
 
-	meetingTitle := strings.TrimSpace(meeting.Title)
-	if meetingTitle == "" {
-		meetingTitle = "Untitled"
-	}
+	docTitle := FormatDocumentTitle(meeting.Title, payload.CreatedAt)
 
 	meetingIDComment := ""
 	if meeting.ID != "" {
@@ -105,7 +102,7 @@ func FormatMeetingMarkdown(payload *AnarlogWebhookPayload) string {
 	}
 
 	// Construct full Markdown according to the specified template
-	return fmt.Sprintf(`# Meeting: %s
+	return fmt.Sprintf(`# %s
 **Date:** %s
 **Participants:** %s
 
@@ -124,7 +121,7 @@ func FormatMeetingMarkdown(payload *AnarlogWebhookPayload) string {
 
 %s
 </details>%s
-`, meetingTitle, formattedDate, participantsStr, summaryBlock.String(), actionItemsBlock.String(), notes, transcript, meetingIDComment)
+`, docTitle, formattedDate, participantsStr, summaryBlock.String(), actionItemsBlock.String(), notes, transcript, meetingIDComment)
 }
 
 func parseTime(raw string) (time.Time, error) {

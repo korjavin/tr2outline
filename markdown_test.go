@@ -33,7 +33,7 @@ func TestFormatMeetingMarkdown(t *testing.T) {
 	}
 
 	title := FormatDocumentTitle(payload.Data.Meeting.Title, payload.CreatedAt)
-	expectedTitle := "Meeting: Weekly Sync (2026-07-28)"
+	expectedTitle := "2026-07-28 Weekly Sync"
 	if title != expectedTitle {
 		t.Errorf("expected title %q, got %q", expectedTitle, title)
 	}
@@ -41,7 +41,7 @@ func TestFormatMeetingMarkdown(t *testing.T) {
 	md := FormatMeetingMarkdown(payload)
 
 	expectedSnippets := []string{
-		"# Meeting: Weekly Sync",
+		"# 2026-07-28 Weekly Sync",
 		"**Date:** 2026-07-28 09:00:00 UTC",
 		"**Participants:** Alice, Bob",
 		"## 📝 Summary",
@@ -80,14 +80,14 @@ func TestFormatMeetingMarkdown_EmptyFields(t *testing.T) {
 	}
 
 	title := FormatDocumentTitle(payload.Data.Meeting.Title, payload.CreatedAt)
-	if !strings.HasPrefix(title, "Meeting: Untitled") {
-		t.Errorf("expected title to start with 'Meeting: Untitled', got %q", title)
+	if !strings.Contains(title, "Untitled") {
+		t.Errorf("expected title to contain 'Untitled', got %q", title)
 	}
 
 	md := FormatMeetingMarkdown(payload)
 
 	expectedSnippets := []string{
-		"# Meeting: Untitled",
+		"Untitled",
 		"**Participants:** _None_",
 		"_No summary provided._",
 		"_No action items._",
