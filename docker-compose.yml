@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   tr2outline:
-    image: ghcr.io/korjavin/tr2outline:latest
+    image: ghcr.io/korjavin/tr2outline:d71cb333afd8c77551849a9b3b0695071334b5c9
     container_name: tr2outline
     restart: unless-stopped
     environment:
