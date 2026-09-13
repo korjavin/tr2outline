@@ -359,3 +359,25 @@ func TestHandler_MeetingCompleted_WithContent(t *testing.T) {
 		t.Errorf("expected status 'success', got %v", resp["status"])
 	}
 }
+
+func TestAbsoluteDocURL(t *testing.T) {
+	tests := []struct {
+		name string
+		base string
+		url  string
+		want string
+	}{
+		{"relative path", "https://outline.example.test", "/doc/weekly-sync-abc123", "https://outline.example.test/doc/weekly-sync-abc123"},
+		{"already absolute", "https://outline.example.test", "https://other.example.test/doc/abc123", "https://other.example.test/doc/abc123"},
+		{"base with trailing slash", "https://outline.example.test/", "/doc/abc123", "https://outline.example.test/doc/abc123"},
+		{"empty url", "https://outline.example.test", "", ""},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := absoluteDocURL(tc.base, tc.url); got != tc.want {
+				t.Errorf("absoluteDocURL(%q, %q) = %q, want %q", tc.base, tc.url, got, tc.want)
+			}
+		})
+	}
+}

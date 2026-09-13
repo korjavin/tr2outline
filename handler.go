@@ -128,7 +128,8 @@ func (s *WebhookServer) HandleAnarlogWebhook(w http.ResponseWriter, r *http.Requ
 	if updated {
 		action = "updated"
 	}
-	log.Printf("Successfully %s Outline document %q (ID: %s, URL: %s)", action, docResp.Data.Title, docResp.Data.ID, docResp.Data.URL)
+	docURL := absoluteDocURL(s.cfg.OutlineURL, docResp.Data.URL)
+	log.Printf("Successfully %s Outline document %q (ID: %s, URL: %s)", action, docResp.Data.Title, docResp.Data.ID, docURL)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -137,6 +138,17 @@ func (s *WebhookServer) HandleAnarlogWebhook(w http.ResponseWriter, r *http.Requ
 		"action":      action,
 		"document_id": docResp.Data.ID,
 		"title":       docResp.Data.Title,
-		"url":         docResp.Data.URL,
+		"url":         docURL,
 	})
+}
+
+// absoluteDocURL makes an Outline document URL absolute. Outline returns a
+// relative path (e.g. "/doc/<slug>-<id>"), which downstream consumers would
+// otherwise render against the wrong host. URLs that are already absolute and
+// empty values are returned unchanged.
+func absoluteDocURL(base, u string) string {
+	if !strings.HasPrefix(u, "/") {
+		return u
+	}
+	return strings.TrimRight(base, "/") + u
 }
