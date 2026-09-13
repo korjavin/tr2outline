@@ -40,6 +40,11 @@ jobs:
     name: Update Deploy Branch & Trigger Portainer
     needs: build-and-push
     runs-on: ubuntu-latest
+    # Job-level env: the `secrets` context is not allowed in a step `if`, and a
+    # step-level `env` is not visible to that same step's `if`, so the webhook
+    # guard below only works when the value is defined here.
+    env:
+      PORTAINER_WEBHOOK: ${{ secrets.PORTAINER_REDEPLOY_HOOK }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -72,8 +77,6 @@ jobs:
 
       - name: Trigger Portainer Redeploy Webhook
         if: ${{ env.PORTAINER_WEBHOOK != '' }}
-        env:
-          PORTAINER_WEBHOOK: ${{ secrets.PORTAINER_REDEPLOY_HOOK }}
         uses: distributhor/workflow-webhook@2381f0e9c7b6bf061fb1405bd0804b8706116369 # v3.0.8
         with:
           webhook_url: ${{ secrets.PORTAINER_REDEPLOY_HOOK }}
